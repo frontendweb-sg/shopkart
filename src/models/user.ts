@@ -1,3 +1,4 @@
+import { Password } from "@/utils/password";
 import mongoose, { Schema, Document } from "mongoose";
 
 export const USER_TABLE = "user";
@@ -43,8 +44,6 @@ export interface IUser {
   verify: boolean;
   resetToken: string | null;
   address: null | IAddress[];
-  payments: IUserPayments[];
-  cart: ICart[];
 }
 export interface IUserDoc extends Document<IUser>, IUser {
   createdAt?: Date;
@@ -83,10 +82,20 @@ const schema = new Schema(
         ret.id = ret._id;
         delete ret._id;
         delete ret.__v;
+        delete ret.password;
       },
     },
   }
 );
 
+schema.pre("save", function cb(done) {
+  const pwd = this.get("password");
+  if (this.isModified("password")) {
+    this.set("password", Password.hash(pwd));
+  }
+  if (this.get("role") === "admin") this.set("verify", true);
+  done();
+});
+
 export const User =
-  mongoose.models[USER_TABLE] || mongoose.model<IUserDoc>(USER_TABLE, schema);
+  mongoose.models[USER_TABLE] || mongoose.model<IUser>(USER_TABLE, schema);
